@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,maximum-scale=2">
+    <link rel="stylesheet" type="text/css" media="screen" href="/NuDoq/assets/css/style.css?v=f7f09489bd98cf3c402ac5dc2a645dec19939a23">
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>NuDoq: A lightweight .NET XML Documentation API | NuDoq</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="NuDoq: A lightweight .NET XML Documentation API" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A standalone API to read .NET XML documentation files and optionally augment it with reflection information." />
+<meta property="og:description" content="A standalone API to read .NET XML documentation files and optionally augment it with reflection information." />
+<meta property="og:site_name" content="NuDoq" />
+<script type="application/ld+json">
+{"headline":"NuDoq: A lightweight .NET XML Documentation API","@type":"WebSite","description":"A standalone API to read .NET XML documentation files and optionally augment it with reflection information.","url":"/NuDoq/","name":"NuDoq","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/devlooped/NuDoq">View on GitHub</a>
+
+          <h1 id="project_title">NuDoq</h1>
+          <h2 id="project_tagline">A standalone API to read .NET XML documentation files and optionally augment it with reflection information.</h2>
+
+          
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1 id="-nudoq-a-lightweight-net-xml-documentation-api"><img src="https://raw.github.com/devlooped/NuDoq/main/doc/Icon-32.png" alt="Icon" /> NuDoq: A lightweight .NET XML Documentation API</h1>
+
+<p>A standalone API to read and write .NET XML documentation files and optionally augment it with reflection information.</p>
+
+<p><a href="https://www.nuget.org/packages/NuDoq"><img src="https://img.shields.io/nuget/v/NuDoq.svg?color=royalblue" alt="Version" /></a>
+<a href="https://www.nuget.org/packages/NuDoq"><img src="https://img.shields.io/nuget/dt/NuDoq?color=darkmagenta" alt="Downloads" /></a>
+<a href="https://github.com/devlooped/NuDoq/blob/main/license.txt"><img src="https://img.shields.io/github/license/devlooped/NuDoq.svg?color=blue" alt="License" /></a></p>
+
+<!-- #overview -->
+
+<p>NuDoq provides a simple and intuitive API that reads .NET XML documentation files into an in-memory model that can be easily used to generate alternative representations or arbitrary processing. If the read operation is performed using a .NET assembly rather than an XML file, NuDoq will automatically add the reflection information to the in-memory model for the documentation elements, making it very easy to post-process them by grouping by type, namespace, etc.</p>
+
+<p>NuDoq leverages two well-known patterns: the <a href="http://en.wikipedia.org/wiki/Visitor_pattern">Visitor</a> pattern and the <a href="http://en.wikipedia.org/wiki/Composite_pattern">Composite</a> pattern. Essentially, every member in the documentation file is represented as a separate “visitable” type. By simply writing a NuDoq <strong>Visitor</strong>-derived class, you can process only the elements you’re interested in.</p>
+
+<p>NuDoq can read documentation files from any .NET assembly, which are most commonly located alongside the binary.</p>
+
+<!-- #overview -->
+
+<h1 id="how-to-install">How to Install</h1>
+<p>NuDoq is a single assembly with no external dependencies whatsoever and is distributed as a <a href="https://nuget.org/packages/NuDoq">NuGet</a> package. It can be installed issuing the following command in the <a href="http://docs.nuget.org/docs/start-here/using-the-package-manager-console">Package Manager Console</a>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>PM&gt; Install-Package NuDoq
+</code></pre></div></div>
+
+<!-- #usage -->
+<h1 id="usage">Usage</h1>
+
+<p>The main API is <code class="language-plaintext highlighter-rouge">DocReader</code>, which you can use to read an <a href="https://docs.microsoft.com/en-us/dotnet/csharp/codedoc">XML documentation file</a>, or an assembly, in which case the XML file alongside the assembly location will be read and augmented with reflection information about types and members:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">var</span> <span class="n">members</span> <span class="p">=</span> <span class="n">DocReader</span><span class="p">.</span><span class="nf">Read</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">MyType</span><span class="p">).</span><span class="n">Assembly</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>You can then directly enumerate the members and their elements, but this is tedious and would involve a lot of <code class="language-plaintext highlighter-rouge">if</code>/<code class="language-plaintext highlighter-rouge">switch</code> statements to account for all the various types of elements and their nesting. This is why the main consumption is though a <em>visitor</em>. If you are not familiar with the pattern <a href="https://dofactory.com/net/visitor-design-pattern">here is a good overview</a>.</p>
+
+<p>Essentially, you create a visitor and then override/implement methods for the relevant element kinds you’re interested in.</p>
+
+<p>Here is a sample visitor that would render <a href="https://www.markdownguide.org/">markdown</a> for the given nodes:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">class</span> <span class="nc">MarkdownVisitor</span> <span class="p">:</span> <span class="n">Visitor</span>
+<span class="p">{</span>
+    <span class="n">TextWriter</span> <span class="n">output</span><span class="p">;</span>
+
+    <span class="k">public</span> <span class="nf">MarkdownVisitor</span><span class="p">(</span><span class="n">TextWriter</span> <span class="n">output</span><span class="p">)</span> 
+        <span class="p">=&gt;</span> <span class="k">this</span><span class="p">.</span><span class="n">output</span> <span class="p">=</span> <span class="n">output</span><span class="p">;</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitMember</span><span class="p">(</span><span class="n">Member</span> <span class="n">member</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="k">new</span> <span class="kt">string</span><span class="p">(</span><span class="sc">'-'</span><span class="p">,</span> <span class="m">50</span><span class="p">));</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="s">"# "</span> <span class="p">+</span> <span class="n">member</span><span class="p">.</span><span class="n">Id</span><span class="p">);</span>
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitMember</span><span class="p">(</span><span class="n">member</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitSummary</span><span class="p">(</span><span class="n">Summary</span> <span class="n">summary</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="s">"## Summary"</span><span class="p">);</span>
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitSummary</span><span class="p">(</span><span class="n">summary</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitRemarks</span><span class="p">(</span><span class="n">Remarks</span> <span class="n">remarks</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="s">"## Remarks"</span><span class="p">);</span>
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitRemarks</span><span class="p">(</span><span class="n">remarks</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitExample</span><span class="p">(</span><span class="n">Example</span> <span class="n">example</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="s">"### Example"</span><span class="p">);</span>
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitExample</span><span class="p">(</span><span class="n">example</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitC</span><span class="p">(</span><span class="n">C</span> <span class="n">code</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// Wrap inline code in ` according to Markdown syntax.</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="s">" `"</span><span class="p">);</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="n">code</span><span class="p">.</span><span class="n">Content</span><span class="p">);</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="s">"` "</span><span class="p">);</span>
+
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitC</span><span class="p">(</span><span class="n">code</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitCode</span><span class="p">(</span><span class="n">Code</span> <span class="n">code</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        
+        <span class="c1">// Indent code with 4 spaces according to Markdown syntax.</span>
+        <span class="k">foreach</span> <span class="p">(</span><span class="kt">var</span> <span class="n">line</span> <span class="k">in</span> <span class="n">code</span><span class="p">.</span><span class="n">Content</span><span class="p">.</span><span class="nf">Split</span><span class="p">(</span><span class="k">new</span><span class="p">[]</span> <span class="p">{</span> <span class="n">Environment</span><span class="p">.</span><span class="n">NewLine</span> <span class="p">},</span> <span class="n">StringSplitOptions</span><span class="p">.</span><span class="n">None</span><span class="p">))</span>
+        <span class="p">{</span>
+            <span class="n">output</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="s">"    "</span><span class="p">);</span>
+            <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="n">line</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitCode</span><span class="p">(</span><span class="n">code</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitText</span><span class="p">(</span><span class="n">Text</span> <span class="n">text</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="n">text</span><span class="p">.</span><span class="n">Content</span><span class="p">);</span>
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitText</span><span class="p">(</span><span class="n">text</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitPara</span><span class="p">(</span><span class="n">Para</span> <span class="n">para</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="k">base</span><span class="p">.</span><span class="nf">VisitPara</span><span class="p">(</span><span class="n">para</span><span class="p">);</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitSee</span><span class="p">(</span><span class="n">See</span> <span class="n">see</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="kt">var</span> <span class="n">cref</span> <span class="p">=</span> <span class="nf">NormalizeLink</span><span class="p">(</span><span class="n">see</span><span class="p">.</span><span class="n">Cref</span><span class="p">);</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="s">" [{0}]({1}) "</span><span class="p">,</span> <span class="n">cref</span><span class="p">.</span><span class="nf">Substring</span><span class="p">(</span><span class="m">2</span><span class="p">),</span> <span class="n">cref</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">override</span> <span class="k">void</span> <span class="nf">VisitSeeAlso</span><span class="p">(</span><span class="n">SeeAlso</span> <span class="n">seeAlso</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="kt">var</span> <span class="n">cref</span> <span class="p">=</span> <span class="nf">NormalizeLink</span><span class="p">(</span><span class="n">seeAlso</span><span class="p">.</span><span class="n">Cref</span><span class="p">);</span>
+        <span class="n">output</span><span class="p">.</span><span class="nf">WriteLine</span><span class="p">(</span><span class="s">"[{0}]({1})"</span><span class="p">,</span> <span class="n">cref</span><span class="p">.</span><span class="nf">Substring</span><span class="p">(</span><span class="m">2</span><span class="p">),</span> <span class="n">cref</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="kt">string</span> <span class="nf">NormalizeLink</span><span class="p">(</span><span class="kt">string</span> <span class="n">cref</span><span class="p">)</span>
+        <span class="p">=&gt;</span> <span class="n">cref</span><span class="p">.</span><span class="nf">Replace</span><span class="p">(</span><span class="s">":"</span><span class="p">,</span> <span class="s">"-"</span><span class="p">).</span><span class="nf">Replace</span><span class="p">(</span><span class="s">"("</span><span class="p">,</span> <span class="s">"-"</span><span class="p">).</span><span class="nf">Replace</span><span class="p">(</span><span class="s">")"</span><span class="p">,</span> <span class="s">""</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>And you would use it as follows:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">var</span> <span class="n">members</span> <span class="p">=</span> <span class="n">DocReader</span><span class="p">.</span><span class="nf">Read</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">MyType</span><span class="p">).</span><span class="n">Assembly</span><span class="p">);</span>
+<span class="kt">var</span> <span class="n">visitor</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">MarkdownVisitor</span><span class="p">(</span><span class="n">Console</span><span class="p">.</span><span class="n">Out</span><span class="p">);</span>
+
+<span class="c1">// This would traverse all nodes, recursive, and Visit* methods appropriately</span>
+<span class="n">members</span><span class="p">.</span><span class="nf">Accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>There is also an <code class="language-plaintext highlighter-rouge">XmlVisitor</code> in the library that can generate the XML doc file from the in-memory model too, if you want to create (or modify) the documented members.</p>
+
+<p>There is also a built-in <code class="language-plaintext highlighter-rouge">DelegateVisitor</code> which is useful to traverse the entire tree to process only specific nodes. For example, if you wanted to validate all the links in see/seealso elements, you’d use something like:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">var</span> <span class="n">members</span> <span class="p">=</span> <span class="n">DocReader</span><span class="p">.</span><span class="nf">Read</span><span class="p">(</span><span class="k">typeof</span><span class="p">(</span><span class="n">MyType</span><span class="p">).</span><span class="n">Assembly</span><span class="p">);</span>
+
+<span class="kt">var</span> <span class="n">visitor</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">DelegateVisitor</span><span class="p">(</span><span class="k">new</span> <span class="n">VisitorDelegates</span>
+<span class="p">{</span>
+    <span class="n">VisitSee</span> <span class="p">=</span> <span class="n">see</span> <span class="p">=&gt;</span> <span class="nf">ValidateUrl</span><span class="p">(</span><span class="n">see</span><span class="p">.</span><span class="n">Href</span><span class="p">),</span>
+    <span class="n">VisitSeeAlso</span> <span class="p">=</span> <span class="n">seealso</span> <span class="p">=&gt;</span> <span class="nf">ValidateUrl</span><span class="p">(</span><span class="n">seealso</span><span class="p">.</span><span class="n">Href</span><span class="p">),</span>
+<span class="p">});</span>
+
+<span class="n">members</span><span class="p">.</span><span class="nf">Accept</span><span class="p">(</span><span class="n">visitor</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h1 id="model">Model</h1>
+
+<p>Given the main API to traverse and act on the documentation elements is through the <a href="https://dofactory.com/net/visitor-design-pattern">visitor pattern</a>, the most important part of the API is knowing the types of nodes/elements in the visitable model.</p>
+
+<p>There are two logically separated hierarchies of visitable elements: the members (like the whole set read by the <code class="language-plaintext highlighter-rouge">DocReader</code>, a type, method, property, etc.) and the documentation elements (like summary, remarks, code, etc.).</p>
+
+<p>The following is the members hierarchy:</p>
+
+<p><img src="https://raw.githubusercontent.com/devlooped/NuDoq/main/doc/NuDoq.Members.png" alt="Members hierarchy" /></p>
+
+<p>And this is the supported documentation elements hierarchy:</p>
+
+<p><img src="https://raw.githubusercontent.com/devlooped/NuDoq/main/doc/NuDoq.Content.png" alt="Members hierarchy" /></p>
+
+<p>Note that at the visitor level, both hierarchies are treated uniformly, since they all ultimately inherit from <code class="language-plaintext highlighter-rouge">Element</code>. In this fashion, you can have one or multiple visitors processing different parts of the graph, such as one that processes members and generates individual folders for each, and one for documentation elements that generate the content.</p>
+
+<!-- include https://github.com/devlooped/sponsors/raw/main/footer.md -->
+<h1 id="sponsors">Sponsors</h1>
+
+<!-- sponsors.md -->
+<p><a href="https://github.com/clarius"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/clarius.png" alt="Clarius Org" title="Clarius Org" /></a>
+<a href="https://github.com/KirillOsenkov"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/KirillOsenkov.png" alt="Kirill Osenkov" title="Kirill Osenkov" /></a>
+<a href="https://github.com/MFB-Technologies-Inc"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/MFB-Technologies-Inc.png" alt="MFB Technologies, Inc." title="MFB Technologies, Inc." /></a>
+<a href="https://github.com/decriptor"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/decriptor.png" alt="Stephen Shaw" title="Stephen Shaw" /></a>
+<a href="https://github.com/torutek-gh"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/torutek-gh.png" alt="Torutek" title="Torutek" /></a>
+<a href="https://github.com/drivenet"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/drivenet.png" alt="DRIVE.NET, Inc." title="DRIVE.NET, Inc." /></a>
+<a href="https://github.com/dgnaegi"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/dgnaegi.png" alt="Daniel Gnägi" title="Daniel Gnägi" /></a>
+<a href="https://github.com/AshleyMedway"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/AshleyMedway.png" alt="Ashley Medway" title="Ashley Medway" /></a>
+<a href="https://github.com/Keflon"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/Keflon.png" alt="Keith Pickford" title="Keith Pickford" /></a>
+<a href="https://github.com/tbolon"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/tbolon.png" alt="Thomas Bolon" title="Thomas Bolon" /></a>
+<a href="https://github.com/kfrancis"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/kfrancis.png" alt="Kori Francis" title="Kori Francis" /></a>
+<a href="https://github.com/twenzel"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/twenzel.png" alt="Toni Wenzel" title="Toni Wenzel" /></a>
+<a href="https://github.com/Giorgi"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/Giorgi.png" alt="Giorgi Dalakishvili" title="Giorgi Dalakishvili" /></a>
+<a href="https://github.com/MikeCodesDotNET"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/MikeCodesDotNET.png" alt="Mike James" title="Mike James" /></a>
+<a href="https://github.com/dansiegel"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/dansiegel.png" alt="Dan Siegel" title="Dan Siegel" /></a>
+<a href="https://github.com/rbnswartz"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/rbnswartz.png" alt="Reuben Swartz" title="Reuben Swartz" /></a>
+<a href="https://github.com/jfoshee"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/jfoshee.png" alt="Jacob Foshee" title="Jacob Foshee" /></a>
+<a href="https://github.com/eajhnsn1"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/Mrxx99.png" alt="" title="&quot;)](https://github.com/Mrxx99)
+[![Eric Johnson](https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/eajhnsn1.png &quot;Eric Johnson" /></a>
+<a href="https://github.com/mackayn"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/mackayn.png" alt="Norman Mackay" title="Norman Mackay" /></a>
+<a href="https://github.com/certifytheweb"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/certifytheweb.png" alt="Certify The Web" title="Certify The Web" /></a>
+<a href="https://github.com/richlee"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/richlee.png" alt="Rich Lee" title="Rich Lee" /></a>
+<a href="https://github.com/IxTechnologies"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/nietras.png" alt="" title="&quot;)](https://github.com/nietras)
+[![Ix Technologies B.V.](https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/IxTechnologies.png &quot;Ix Technologies B.V." /></a>
+<a href="https://github.com/davidjenni"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/davidjenni.png" alt="David JENNI" title="David JENNI" /></a>
+<a href="https://github.com/Jonathan-Hickey"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/Jonathan-Hickey.png" alt="Jonathan " title="Jonathan " /></a>
+<a href="https://github.com/okyrylchuk"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/okyrylchuk.png" alt="Oleg Kyrylchuk" title="Oleg Kyrylchuk" /></a>
+<a href="https://github.com/MariuszKogut"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/MariuszKogut.png" alt="Mariusz Kogut" title="Mariusz Kogut" /></a>
+<a href="https://github.com/akunzai"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/akunzai.png" alt="Charley Wu" title="Charley Wu" /></a>
+<a href="https://github.com/jakobt"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/jakobt.png" alt="Jakob Tikjøb Andersen" title="Jakob Tikjøb Andersen" /></a>
+<a href="https://github.com/seanalexander"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/seanalexander.png" alt="Seann Alexander" title="Seann Alexander" /></a>
+<a href="https://github.com/tinohager"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/tinohager.png" alt="Tino Hager" title="Tino Hager" /></a>
+<a href="https://github.com/ploeh"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/ploeh.png" alt="Mark Seemann" title="Mark Seemann" /></a>
+<a href="https://github.com/angelobelchior"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/angelobelchior.png" alt="Angelo Belchior" title="Angelo Belchior" /></a>
+<a href="https://github.com/BlauhausTechnology"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/BlauhausTechnology.png" alt="Blauhaus Technology (Pty) Ltd" title="Blauhaus Technology (Pty) Ltd" /></a>
+<a href="https://github.com/KenBonny"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/KenBonny.png" alt="Ken Bonny" title="Ken Bonny" /></a>
+<a href="https://github.com/SimonCropp"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/SimonCropp.png" alt="Simon Cropp" title="Simon Cropp" /></a>
+<a href="https://github.com/agileworks-eu"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/agileworks-eu.png" alt="agileworks-eu" title="agileworks-eu" /></a>
+<a href="https://github.com/wjgthb"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/sorahex.png" alt="" title="&quot;)](https://github.com/sorahex)
+[![](https://raw.githubusercontent.com/devlooped/sponsors/main/.github/avatars/wjgthb.png &quot;" /></a></p>
+
+<!-- sponsors.md -->
+
+<p><a href="https://github.com/sponsors/devlooped"><img src="https://raw.githubusercontent.com/devlooped/sponsors/main/sponsor.png" alt="Sponsor this project" title="Sponsor this project" /></a>
+ </p>
+
+<p><a href="https://github.com/sponsors">Learn more about GitHub Sponsors</a></p>
+
+<!-- https://github.com/devlooped/sponsors/raw/main/footer.md -->
+
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        
+        <p class="copyright">NuDoq maintained by <a href="https://github.com/devlooped">devlooped</a></p>
+        
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+  </body>
+</html>
